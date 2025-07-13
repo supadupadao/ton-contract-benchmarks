@@ -1,0 +1,8 @@
+import { Address } from '@ton/core';
+
+export const ALICE: Address = Address.parse(
+  '0:1111111111111111111111111111111111111111111111111111111111111111'
+);
+export const BOB: Address = Address.parse(
+  '0:2222222222222222222222222222222222222222222222222222222222222222'
+);

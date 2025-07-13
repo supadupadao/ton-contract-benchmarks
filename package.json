@@ -1,0 +1,26 @@
+{
+  "name": "ton-contracts-benchmarks",
+  "version": "1.0.0",
+  "description": "Automated benchmarks for Jetton token implementations on TON.",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/main.ts",
+    "format": "prettier --write 'src/**/*.ts'"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.0.13",
+    "prettier": "^3.6.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@ton/core": "^0.61.0",
+    "@ton/crypto": "^3.3.0",
+    "@ton/sandbox": "^0.35.1",
+    "@ton/test-utils": "^0.9.0",
+    "@ton/ton": "^15.3.1"
+  }
+}
