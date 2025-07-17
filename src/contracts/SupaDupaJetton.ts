@@ -1,7 +1,6 @@
-import { Address, beginCell, Cell } from '@ton/core';
-import { JETTON_DESCRIPTION, JETTON_NAME, JETTON_SYMBOL, JettonMaster, JettonWallet } from './base';
-import { Blockchain, SandboxContract, SendMessageResult, TreasuryContract } from '@ton/sandbox';
-import { ALICE } from './common';
+import { Address, beginCell, Cell, contractAddress, ContractProvider, Sender } from '@ton/core';
+import { JettonMaster, JettonWallet } from './base';
+import { JETTON_NAME, JETTON_DESCRIPTION, JETTON_SYMBOL, ALICE } from './common';
 
 const JETTON_MASTER_CODE: string =
   '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';
@@ -13,98 +12,73 @@ const JETTON_WALLET_CODE: string =
 const JETTON_WALLET_SYSTEM_CELL: string =
   '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';
 
-export class TestJettonMaster extends JettonMaster {
-  public code: Cell;
-  public data: Cell;
+export class SupaDupaJettonMaster extends JettonMaster {
+  public static async create(): Promise<JettonMaster> {
+    const init = {
+      code: Cell.fromBase64(JETTON_MASTER_CODE),
+      data: beginCell()
+        .storeRef(Cell.fromBase64(JETTON_MASTER_SYSTEM_CELL))
+        .storeUint(0, 1)
+        .storeAddress(ALICE)
+        .storeInt(0n, 257)
+        .endCell(),
+    };
+    const address = contractAddress(0, init);
 
-  constructor(code: Cell, data: Cell) {
-    super();
-
-    this.code = code;
-    this.data = data;
+    return new SupaDupaJettonMaster(address, init);
   }
 
-  public static async create(blockchain: Blockchain): Promise<TestJettonMaster> {
-    const code = Cell.fromBase64(JETTON_MASTER_CODE);
-    const data = beginCell()
-      .storeRef(Cell.fromBase64(JETTON_MASTER_SYSTEM_CELL))
-      .storeUint(0, 1)
-      .storeAddress(ALICE)
-      .storeInt(0n, 257)
-      .endCell();
-
-    return new TestJettonMaster(code, data);
-  }
-
-  private makeDeploy(): Cell {
-    return beginCell()
-      .storeUint(0x133701, 32)
-      .storeUint(0, 64)
-      .storeRef(beginCell().storeStringRefTail(JETTON_NAME).asCell())
-      .storeRef(beginCell().storeStringRefTail(JETTON_DESCRIPTION).asCell())
-      .storeRef(beginCell().storeStringRefTail(JETTON_SYMBOL).asCell())
-      .storeCoins(100500n)
-      .storeMaybeCoins(null)
-      .endCell();
-  }
-
-  public async deploy(blockchain: Blockchain): Promise<SendMessageResult> {
-    return this.send(blockchain, ALICE, this.makeDeploy(), this.stateInit);
-  }
-
-  private makeMint(receiver: Address, jettonAmount: bigint): Cell {
+  public async sendMint(provider: ContractProvider, via: Sender, amount: bigint, address: Address) {
     const OPCODE: number = 0x133704;
 
-    return beginCell()
-      .storeUint(OPCODE, 32)
-      .storeUint(0, 64)
-      .storeAddress(receiver)
-      .storeCoins(jettonAmount)
-      .endCell();
-  }
-
-  public async mint(
-    blockchain: Blockchain,
-    receiver: Address,
-    jettonAmount: bigint
-  ): Promise<SendMessageResult> {
-    return await this.send(
-      blockchain,
-      ALICE,
-      this.makeMint(receiver, jettonAmount),
-      this.stateInit
+    await this.send(
+      provider,
+      via,
+      beginCell()
+        .storeUint(OPCODE, 32)
+        .storeUint(0, 64)
+        .storeAddress(address)
+        .storeCoins(amount)
+        .endCell()
     );
   }
 
-  public async getWallet(blockchain: Blockchain, owner: Address): Promise<JettonWallet> {
-    return await TestJettonWallet.create(blockchain, this, owner);
+  public async sendDeploy(provider: ContractProvider, via: Sender) {
+    const OPCODE: number = 0x133701;
+
+    await this.send(
+      provider,
+      via,
+      beginCell()
+        .storeUint(OPCODE, 32)
+        .storeUint(0, 64)
+        .storeRef(beginCell().storeStringRefTail(JETTON_NAME).asCell())
+        .storeRef(beginCell().storeStringRefTail(JETTON_DESCRIPTION).asCell())
+        .storeRef(beginCell().storeStringRefTail(JETTON_SYMBOL).asCell())
+        .storeCoins(100500n)
+        .storeMaybeCoins(null)
+        .endCell()
+    );
+  }
+
+  public async wallet(owner: Address): Promise<JettonWallet> {
+    return await SupaDupaJettonWallet.create(this, owner);
   }
 }
 
-export class TestJettonWallet extends JettonWallet {
-  public code: Cell;
-  public data: Cell;
+export class SupaDupaJettonWallet extends JettonWallet {
+  public static async create(master: JettonMaster, owner: Address): Promise<JettonWallet> {
+    const init = {
+      code: Cell.fromBase64(JETTON_WALLET_CODE),
+      data: beginCell()
+        .storeRef(Cell.fromBase64(JETTON_WALLET_SYSTEM_CELL))
+        .storeUint(0, 1)
+        .storeAddress(master.address)
+        .storeAddress(owner)
+        .endCell(),
+    };
+    const address = contractAddress(0, init);
 
-  constructor(code: Cell, data: Cell, master: Address, owner: Address) {
-    super();
-
-    this.code = code;
-    this.data = data;
-  }
-
-  public static async create(
-    _blockchain: Blockchain,
-    jettonMaster: JettonMaster,
-    owner: Address
-  ): Promise<TestJettonWallet> {
-    const code = Cell.fromBase64(JETTON_WALLET_CODE);
-    const data = beginCell()
-      .storeRef(Cell.fromBase64(JETTON_WALLET_SYSTEM_CELL))
-      .storeUint(0, 1)
-      .storeAddress(jettonMaster.address)
-      .storeAddress(owner)
-      .endCell();
-
-    return new TestJettonWallet(code, data, jettonMaster.address, owner);
+    return new SupaDupaJettonWallet(address, init);
   }
 }

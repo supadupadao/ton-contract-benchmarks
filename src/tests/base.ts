@@ -1,14 +1,12 @@
 import { Blockchain } from '@ton/sandbox';
-import { JettonMaster } from '../contracts/base';
 
 export abstract class TestCase {
   protected blockchain: Blockchain;
-  protected jettonMaster: JettonMaster;
+  // protected jettonMaster: JettonMaster;
   public abstract name: string;
 
-  constructor(blockchain: Blockchain, jettonMaster: JettonMaster) {
+  constructor(blockchain: Blockchain) {
     this.blockchain = blockchain;
-    this.jettonMaster = jettonMaster;
   }
 
   public async run() {

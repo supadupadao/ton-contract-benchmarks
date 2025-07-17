@@ -1,9 +1,7 @@
-import { TestJettonMaster } from './contracts/SupaDupaJetton';
 import { TestsRunner } from './testRunner';
 
 async function registerTokens(testsRunner: TestsRunner) {
   console.debug('Registering tokens');
-  await testsRunner.registerToken(TestJettonMaster);
 }
 
 async function runTests(testsRunner: TestsRunner) {

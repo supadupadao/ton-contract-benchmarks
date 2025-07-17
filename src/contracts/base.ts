@@ -2,128 +2,79 @@ import {
   Address,
   beginCell,
   Cell,
-  contractAddress,
-  StateInit,
+  Contract,
+  ContractABI,
+  ContractProvider,
+  Sender,
   toNano,
-  TupleBuilder,
-  TupleItem,
-  TupleReader,
 } from '@ton/core';
-import { Blockchain, GetMethodResult, internal, SendMessageResult } from '@ton/sandbox';
+import { getJettonMasterABI, getJettonWalletABI } from '../abi';
 
-export type JettonMasterConstructor<T extends JettonMaster = JettonMaster> = {
-  create(blockchain: Blockchain): Promise<T>;
-};
-export const JETTON_NAME: string = 'JETTON_NAME';
-export const JETTON_DESCRIPTION: string = 'JETTON_DESCRIPTION';
-export const JETTON_SYMBOL: string = 'JTN';
+export abstract class JettonMaster implements Contract {
+  readonly address: Address;
+  readonly init: { code: Cell; data: Cell };
+  readonly abi: ContractABI = getJettonMasterABI();
 
-export interface JettonWalletData {
-  balance: bigint;
-}
-
-export abstract class Contract {
-  public abstract code: Cell;
-  public abstract data: Cell;
-
-  public get stateInit(): StateInit {
-    return {
-      code: this.code,
-      data: this.data,
-    };
+  public constructor(address: Address, init: { code: Cell; data: Cell }) {
+    this.address = address;
+    this.init = init;
   }
 
-  public get address(): Address {
-    return contractAddress(0, this.stateInit);
-  }
+  public abstract sendDeploy(provider: ContractProvider, via: Sender): Promise<void>;
 
-  protected async send(
-    blockchain: Blockchain,
-    from: Address,
-    body: Cell,
-    stateInit?: StateInit
-  ): Promise<SendMessageResult> {
-    const to = this.address;
-    const value = toNano('0.1');
-    return await blockchain.sendMessage(
-      internal({
-        from,
-        to,
-        body,
-        value,
-        stateInit,
-      })
-    );
-  }
+  public abstract sendMint(
+    provider: ContractProvider,
+    via: Sender,
+    amount: bigint,
+    address: Address
+  ): Promise<void>;
 
-  protected async get(
-    blockchain: Blockchain,
-    method: string,
-    args: TupleItem[] = []
-  ): Promise<GetMethodResult> {
-    return await blockchain.runGetMethod(this.address, method, args);
+  protected async send(provider: ContractProvider, via: Sender, body: Cell) {
+    await provider.internal(via, {
+      value: toNano('0.1'),
+      body: body,
+    });
   }
 }
 
-export abstract class JettonMaster extends Contract {
-  public abstract deploy(blockchain: Blockchain): Promise<SendMessageResult>;
-  public abstract getWallet(blockchain: Blockchain, owner: Address): Promise<JettonWallet>;
+export abstract class JettonWallet implements Contract {
+  readonly address: Address;
+  readonly init: { code: Cell; data: Cell };
+  readonly abi: ContractABI = getJettonWalletABI();
 
-  public abstract mint(
-    blockchain: Blockchain,
+  public constructor(address: Address, init: { code: Cell; data: Cell }) {
+    this.address = address;
+    this.init = init;
+  }
+
+  public async sendTransfer(
+    provider: ContractProvider,
+    via: Sender,
     receiver: Address,
-    jettonAmount: bigint
-  ): Promise<SendMessageResult>;
+    amount: bigint
+  ) {
+    const OPCODE = 0x0f8a7ea5;
 
-  public async getWalletAddress(blockchain: Blockchain, owner: Address): Promise<Address> {
-    const METHOD = 'get_wallet_address';
-    console.debug(
-      `Executing ${METHOD} get method for contract ${this.address.toString()} for owner ${owner.toString()}`
+    this.send(
+      provider,
+      via,
+      beginCell()
+        .storeUint(OPCODE, 32)
+        .storeUint(0n, 64)
+        .storeCoins(amount)
+        .storeAddress(receiver)
+        .storeAddress(receiver)
+        .storeMaybeRef(null)
+        .storeCoins(0n)
+        .storeMaybeRef(null)
+        .endCell()
     );
-    const args = new TupleBuilder();
-    args.writeAddress(owner);
-    const result = await this.get(blockchain, METHOD, args.build());
-    const reader = new TupleReader(result.stack);
-    return reader.readAddress();
-  }
-}
-
-export abstract class JettonWallet extends Contract {
-  protected makeJettonTransfer(receiver: Address, jettonAmount: bigint): Cell {
-    const OPCODE: number = 0x0f8a7ea5;
-
-    return beginCell()
-      .storeUint(OPCODE, 32)
-      .storeUint(0n, 64)
-      .storeCoins(jettonAmount)
-      .storeAddress(receiver)
-      .storeAddress(receiver)
-      .storeMaybeRef(null)
-      .storeCoins(0n)
-      .storeMaybeRef(null)
-      .endCell();
   }
 
-  public async transfer(
-    blockchain: Blockchain,
-    sender: Address,
-    receiver: Address,
-    jettonAmount: bigint
-  ): Promise<SendMessageResult> {
-    console.debug(
-      `Executing transfer method for contract ${this.address.toString()} from ${sender.toString()} to ${receiver.toString()} for amount ${jettonAmount.toString()}`
-    );
-    return await this.send(blockchain, sender, this.makeJettonTransfer(receiver, jettonAmount));
-  }
-
-  public async getWalletData(blockchain: Blockchain): Promise<JettonWalletData> {
-    const METHOD = 'get_wallet_data';
-    console.debug(`Executing ${METHOD} get method for contract ${this.address.toString()}`);
-    const args = new TupleBuilder();
-    const result = await this.get(blockchain, METHOD, args.build());
-    const reader = new TupleReader(result.stack);
-    return {
-      balance: reader.readBigNumber(),
-    };
+  protected async send(provider: ContractProvider, via: Sender, body: Cell) {
+    await provider.internal(via, {
+      value: toNano('0.1'),
+      body: body,
+    });
   }
 }
