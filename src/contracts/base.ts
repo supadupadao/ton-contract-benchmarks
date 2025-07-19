@@ -7,8 +7,19 @@ import {
   ContractProvider,
   Sender,
   toNano,
+  TupleBuilder,
+  TupleReader,
 } from '@ton/core';
 import { getJettonMasterABI, getJettonWalletABI } from '../abi';
+import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
+
+export type JettonMasterConstructor<T extends JettonMaster = JettonMaster> = {
+  create(deployer: SandboxContract<TreasuryContract>): Promise<T>;
+};
+
+export interface JettonWalletData {
+  balance: bigint;
+}
 
 export abstract class JettonMaster implements Contract {
   readonly address: Address;
@@ -28,6 +39,8 @@ export abstract class JettonMaster implements Contract {
     amount: bigint,
     address: Address
   ): Promise<void>;
+
+  public abstract wallet(owner: Address): Promise<JettonWallet>;
 
   protected async send(provider: ContractProvider, via: Sender, body: Cell) {
     await provider.internal(via, {
@@ -69,6 +82,16 @@ export abstract class JettonWallet implements Contract {
         .storeMaybeRef(null)
         .endCell()
     );
+  }
+
+  public async getWalletData(provider: ContractProvider): Promise<JettonWalletData> {
+    const METHOD = 'get_wallet_data';
+    console.debug(`Executing ${METHOD} get method for contract ${this.address.toString()}`);
+    const args = new TupleBuilder();
+    const result = await provider.get(METHOD, args.build());
+    return {
+      balance: result.stack.readBigNumber(),
+    };
   }
 
   protected async send(provider: ContractProvider, via: Sender, body: Cell) {
