@@ -1,9 +1,7 @@
 name: Generate Benchmark Report
 
 on:
-  push:
-    branches:
-      - '**' # любые ветки
+  workflow_dispatch:
 
 jobs:
   run-benchmark:
